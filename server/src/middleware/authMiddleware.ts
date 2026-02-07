@@ -1,22 +1,39 @@
 import admin from 'firebase-admin';
-import type { NextFunction } from "express";
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import type {Request, Response, NextFunction} from 'express';
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-});
+// Read the ServiceAccount
+const serviceAccountPath = resolve('../src/config/serviceAccount.json');
+const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
 
-export const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(' ')[1];
+if (!admin.apps.length) {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+}
 
-    if (!token)
-        return res.status(401).json({
-            error: "No token provided" });
+// Defining an interface for the Request structure
+export interface AuthRequest extends Request {
+    user?: admin.auth.DecodedIdToken;
+}
+
+// Tis method gets the authorization header, gets the token, and verifies the user identity before protected routes
+export const verifyToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : authHeader;
+
+    if (!token) {
+        return res.status(401).json({ error: "Unauthorized: No token provided" });
+    }
 
     try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        req.user = decodedToken; // Contains uid, email, etc.
+        req.user = await admin.auth().verifyIdToken(token);
         next();
     } catch (error) {
-        res.status(403).json({ error: "Invalid or expired token" });
+        console.error("Firebase Admin Error:", error);
+        res.status(403).json({ error: "Forbidden: Token validation failed" });
     }
 };
