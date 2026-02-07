@@ -18,7 +18,7 @@ export interface AuthRequest extends Request {
     user?: admin.auth.DecodedIdToken;
 }
 
-// Tis method gets the authorization header, gets the token, and verifies the user identity before protected routes
+// This method gets the authorization header, gets the token, and verifies the user identity before protected routes
 export const verifyToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ')
