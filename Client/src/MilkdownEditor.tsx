@@ -4,7 +4,7 @@ import { replaceAll } from '@milkdown/utils';
 import { useMarkdownPersistence } from './hooks/useMarkdownPersistence';
 
 import '@milkdown/crepe/theme/common/style.css';
-import '@milkdown/crepe/theme/frame.css';
+import '@milkdown/crepe/theme/frame-dark.css';
 import './MilkdownEditor.css';
 
 export const MilkdownEditor: React.FC = () => {
