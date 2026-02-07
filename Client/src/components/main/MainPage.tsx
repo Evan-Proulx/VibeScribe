@@ -1,3 +1,5 @@
+import NotesPanel from "./NotesPanel.tsx";
+
 const MainPage = () => {
     return (
         <div className="bg-black w-screen min-h-screen flex flex-col text-white">
@@ -127,6 +129,7 @@ const MainPage = () => {
                     </button>
                 </div>
             </div>
+            <NotesPanel/>
         </div>
     );
 };
