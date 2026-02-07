@@ -5,6 +5,7 @@ import { useMarkdownPersistence } from './hooks/useMarkdownPersistence';
 
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
+import './MilkdownEditor.css';
 
 export const MilkdownEditor: React.FC = () => {
   const editorRootRef = useRef<HTMLDivElement>(null);
@@ -61,7 +62,7 @@ export const MilkdownEditor: React.FC = () => {
       crepeRef.current = null;
       clearTimeout(syncTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // Sync textarea value when drawer opens
@@ -79,12 +80,9 @@ export const MilkdownEditor: React.FC = () => {
     if (!crepe) return;
 
     try {
-      // @ts-expect-error - Crepe API access
       if (typeof crepe.action === 'function') {
         crepe.action(replaceAll(text));
-        // @ts-expect-error - Crepe API access
       } else if (crepe.editor) {
-        // @ts-expect-error - Crepe API access
         crepe.editor.action(replaceAll(text));
       }
     } catch (e) {
@@ -92,7 +90,7 @@ export const MilkdownEditor: React.FC = () => {
     }
   }, []);
 
-  // Handle textarea input - NO cursor manipulation needed with uncontrolled input
+  // Handle textarea input NO cursor manipulation needed with uncontrolled input
   const handleTextareaInput = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -125,94 +123,42 @@ export const MilkdownEditor: React.FC = () => {
   }, [setMarkdown, syncToEditor]);
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="milkdown-editor-container">
       {/* Controls */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+      <div className="milkdown-controls">
         <button
+          className="milkdown-open-btn"
           onClick={() => setDrawerOpen(true)}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 10,
-            cursor: 'pointer',
-            background: '#333',
-            color: 'white',
-            border: 'none',
-            fontWeight: 'bold',
-          }}
         >
           Open Markdown Source
         </button>
       </div>
 
       {/* Main Editor Area */}
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div className="milkdown-editor-wrapper">
         <div ref={editorRootRef} />
       </div>
 
       {/* Drawer Overlay */}
       {drawerOpen && (
-        <div
-          onClick={handleCloseDrawer}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.35)',
-            zIndex: 999,
-          }}
-        />
+        <div className="drawer-overlay" onClick={handleCloseDrawer} />
       )}
 
       {/* Markdown Drawer */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          height: '100vh',
-          width: 'min(520px, 92vw)',
-          background: '#0f1115',
-          color: 'white',
-          zIndex: 1000,
-          transform: drawerOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 180ms ease',
-          boxShadow: '0 0 40px rgba(0,0,0,0.35)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          style={{
-            padding: 14,
-            borderBottom: '1px solid #333',
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}
-        >
+      <div className={`markdown-drawer ${drawerOpen ? 'open' : ''}`}>
+        <div className="drawer-header">
           <strong>Markdown Source</strong>
-          <button onClick={handleCloseDrawer} style={{ cursor: 'pointer' }}>
+          <button className="drawer-close-btn" onClick={handleCloseDrawer}>
             Close
           </button>
         </div>
 
-        <div style={{ padding: 12, flex: 1 }}>
+        <div className="drawer-content">
           <textarea
             ref={textareaRef}
+            className="markdown-textarea"
             onInput={handleTextareaInput}
             spellCheck={false}
-            style={{
-              width: '100%',
-              height: '100%',
-              resize: 'none',
-              padding: 12,
-              borderRadius: 12,
-              background: '#0b0d11',
-              color: '#e0e0e0',
-              border: '1px solid #333',
-              fontFamily: 'monospace',
-              whiteSpace: 'pre',
-              overflowWrap: 'normal',
-              wordWrap: 'normal',
-            }}
           />
         </div>
       </div>
