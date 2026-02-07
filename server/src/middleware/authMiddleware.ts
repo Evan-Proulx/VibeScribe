@@ -1,10 +1,12 @@
 import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
-import type {Request, Response, NextFunction} from 'express';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+import type { Request, Response, NextFunction } from 'express';
 
-// Read the ServiceAccount
-const serviceAccountPath = resolve('../src/config/serviceAccount.json');
+// Read the ServiceAccount (ESM-compatible path resolution)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const serviceAccountPath = resolve(__dirname, '../config/serviceAccount.json');
 const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
 
 if (!admin.apps.length) {
