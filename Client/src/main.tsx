@@ -9,7 +9,7 @@ function App() {
     <div className="vibe-scribe-app">
       <header style={{ padding: '2rem', textAlign: 'center' }}>
         <h1>VibeScribe</h1>
-        <p>Your AI-Powered Markdown Editor</p>
+        <p className="subtitle">Your AI-Powered Markdown Editor</p>
       </header>
 
       <main>
