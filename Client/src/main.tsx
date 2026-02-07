@@ -1,10 +1,20 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import './App.css'
+import { MilkdownEditor } from './MilkdownEditor'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+function App() {
+  return (
+    <div className="vibe-scribe-app">
+      <header style={{ padding: '2rem', textAlign: 'center' }}>
+        <h1>VibeScribe</h1>
+        <p>Your AI-Powered Markdown Editor</p>
+      </header>
+      
+      <main>
+        {/* This renders the component you just built in the screenshots */}
+        <MilkdownEditor />
+      </main>
+    </div>
+  )
+}
+
+export default App
