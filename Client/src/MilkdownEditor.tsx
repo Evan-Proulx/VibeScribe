@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Crepe } from '@milkdown/crepe';
 
 // Import essential Crepe styling
 import '@milkdown/crepe/theme/common/style.css';
-import '@milkdown/crepe/theme/frame.css';
+import '@milkdown/crepe/theme/nord-dark.css';
 
 export const MilkdownEditor = () => {
   const editorRef = useRef<HTMLDivElement>(null);

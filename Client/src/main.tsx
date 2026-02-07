@@ -1,4 +1,6 @@
+import React from 'react'
 import './App.css'
+import { createRoot } from 'react-dom/client'
 import { MilkdownEditor } from './MilkdownEditor'
 
 function App() {
@@ -8,13 +10,25 @@ function App() {
         <h1>VibeScribe</h1>
         <p>Your AI-Powered Markdown Editor</p>
       </header>
-      
+
       <main>
-        {/* This renders the component you just built in the screenshots */}
+        {/* The MilkdownEditor component will render the markdown editor interface */}
         <MilkdownEditor />
       </main>
     </div>
   )
 }
+
+const container = document.getElementById('root')
+if (!container) {
+  throw new Error('Root container not found: make sure index.html has a <div id="root"></div>')
+}
+
+const root = createRoot(container)
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
 
 export default App
