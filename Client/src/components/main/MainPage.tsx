@@ -89,6 +89,16 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         });
     };
 
+    // Delete note handler
+    const handleDeleteNote = (noteId: string) => {
+        if (window.confirm("Are you sure you want to delete this note?")) {
+            setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            if (selectedNoteId === noteId) {
+                handleNewNote(); // Clear editor if deleted note was selected
+            }
+        }
+    };
+
     // PDF download handler
     const handleDownloadPDF = useCallback(async () => {
         setError(null);
@@ -186,6 +196,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                 notes={notes}
                 selectedNoteId={selectedNoteId}
                 onSelect={handleSelectNote}
+                onDelete={handleDeleteNote}
                 onNewNote={handleNewNote}
             />
 
