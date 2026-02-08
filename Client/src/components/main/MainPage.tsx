@@ -26,6 +26,9 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
 
+    // Key to force Milkdown editor remount
+    const [editorKey, setEditorKey] = useState(0);
+
     // Helper for date labels
     function nowLabel() {
         return new Date().toLocaleDateString("en-CA", {
@@ -45,6 +48,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         setSelectedNoteId(null);
         setExtractedMarkdown('');
         setEditorMarkdown('');
+        setEditorKey(prev => prev + 1);  // Force editor remount
         setSidebarOpen(false);
     };
 
@@ -53,6 +57,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         setSelectedNoteId(note.id);
         setExtractedMarkdown(note.content);
         setEditorMarkdown(note.content);
+        setEditorKey(prev => prev + 1);  // Force editor remount with new content
         setSidebarOpen(false);
     };
 
@@ -338,6 +343,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                 <div className="flex flex-col items-center gap-2">
                     <div className="w-full max-w-5xl">
                         <MilkdownEditor
+                            key={editorKey}
                             initialMarkdown={extractedMarkdown}
                             onMarkdownChange={handleMarkdownChange}
                         />

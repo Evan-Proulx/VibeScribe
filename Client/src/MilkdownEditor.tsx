@@ -21,6 +21,7 @@ export const MilkdownEditor: React.FC<MilkdownEditorProps> = ({ initialMarkdown,
   // Drawer state - when open, textarea is completely independent
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerOpenRef = useRef(false); // Ref to track in callbacks
+  const hasInitializedRef = useRef(false); // Track if initialMarkdown was applied on mount
 
   // Persistence hook for markdown content
   const [markdown, setMarkdown] = useMarkdownPersistence();
@@ -36,9 +37,24 @@ export const MilkdownEditor: React.FC<MilkdownEditorProps> = ({ initialMarkdown,
     onMarkdownChange?.(markdown);
   }, [markdown, onMarkdownChange]);
 
-  // Handle external initialMarkdown changes (from Gemini extraction)
+  // Handle external initialMarkdown changes (from Gemini extraction or note selection)
+  // This effect handles BOTH initial mount AND subsequent changes
   useEffect(() => {
-    if (initialMarkdown && initialMarkdown !== markdownRef.current) {
+    // On mount: if initialMarkdown is provided (including empty string), use it
+    // This ensures New Note clears the editor and note selection loads correctly
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      if (initialMarkdown !== null && initialMarkdown !== undefined) {
+        // Use initialMarkdown even if empty (for New Note)
+        setMarkdown(initialMarkdown);
+        // Delay sync to editor until it's created
+        setTimeout(() => syncToEditor(initialMarkdown), 100);
+        return;
+      }
+    }
+
+    // After initial mount: only update if initialMarkdown changes
+    if (initialMarkdown !== null && initialMarkdown !== undefined && initialMarkdown !== markdownRef.current) {
       setMarkdown(initialMarkdown);
       syncToEditor(initialMarkdown);
     }
