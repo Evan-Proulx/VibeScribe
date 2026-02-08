@@ -7,7 +7,12 @@ import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame-dark.css';
 import './MilkdownEditor.css';
 
-export const MilkdownEditor: React.FC = () => {
+interface MilkdownEditorProps {
+  initialMarkdown?: string | null;
+  onMarkdownChange?: (markdown: string) => void;
+}
+
+export const MilkdownEditor: React.FC<MilkdownEditorProps> = ({ initialMarkdown, onMarkdownChange }) => {
   const editorRootRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,7 +33,16 @@ export const MilkdownEditor: React.FC = () => {
 
   useEffect(() => {
     markdownRef.current = markdown;
-  }, [markdown]);
+    onMarkdownChange?.(markdown);
+  }, [markdown, onMarkdownChange]);
+
+  // Handle external initialMarkdown changes (from Gemini extraction)
+  useEffect(() => {
+    if (initialMarkdown && initialMarkdown !== markdownRef.current) {
+      setMarkdown(initialMarkdown);
+      syncToEditor(initialMarkdown);
+    }
+  }, [initialMarkdown]);
 
   // Initialize the Milkdown editor
   useEffect(() => {
@@ -42,8 +56,8 @@ export const MilkdownEditor: React.FC = () => {
     crepeRef.current = crepe;
 
     // Listen for changes from the main editor ONLY when drawer is closed
-    crepe.on((listener) => {
-      listener.markdownUpdated((_, nextMd) => {
+    crepe.on((listener: any) => {
+      listener.markdownUpdated((_: any, nextMd: string) => {
         // CRITICAL: If drawer is open, do NOT update anything
         // The textarea is the source of truth while open
         if (drawerOpenRef.current) return;
