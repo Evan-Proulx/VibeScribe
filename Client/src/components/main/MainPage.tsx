@@ -4,6 +4,7 @@ import { MilkdownEditor } from '../../MilkdownEditor';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../firebase';
 import { downloadMarkdownAsPdf, EmptyMarkdownError } from '../../utils/pdf';
+import NotesSidebar, { type Note } from './NotesSidebar.tsx';
 
 interface MainPageProps {
     onLoginRequest: () => void;
@@ -20,12 +21,70 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     const [editorMarkdown, setEditorMarkdown] = useState<string>('');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+    // Sidebar state
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [notes, setNotes] = useState<Note[]>([]);
+    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+
+    // Helper for date labels
+    function nowLabel() {
+        return new Date().toLocaleDateString("en-CA", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+    }
+
     // Callback to receive markdown updates from editor
     const handleMarkdownChange = useCallback((markdown: string) => {
         setEditorMarkdown(markdown);
     }, []);
 
-    // PDF download handler - uses remark pipeline for proper markdown rendering
+    // Create new note - clear editor and selection
+    const handleNewNote = () => {
+        setSelectedNoteId(null);
+        setExtractedMarkdown('');
+        setEditorMarkdown('');
+        setSidebarOpen(false);
+    };
+
+    // Select existing note - load content into editor
+    const handleSelectNote = (note: Note) => {
+        setSelectedNoteId(note.id);
+        setExtractedMarkdown(note.content);
+        setEditorMarkdown(note.content);
+        setSidebarOpen(false);
+    };
+
+    // Save current editor content as note
+    const handleSave = () => {
+        const trimmed = editorMarkdown.trim();
+        if (!trimmed) return;
+
+        if (!selectedNoteId) {
+            const newNote: Note = {
+                id: crypto.randomUUID(),
+                content: editorMarkdown,
+                updatedAt: nowLabel(),
+            };
+            setNotes((prev) => [newNote, ...prev]);
+            setSelectedNoteId(newNote.id);
+            return;
+        }
+
+        setNotes((prev) => {
+            const updated = prev.map((n) =>
+                n.id === selectedNoteId
+                    ? { ...n, content: editorMarkdown, updatedAt: nowLabel() }
+                    : n
+            );
+            const updatedNote = updated.find((n) => n.id === selectedNoteId);
+            const rest = updated.filter((n) => n.id !== selectedNoteId);
+            return updatedNote ? [updatedNote, ...rest] : updated;
+        });
+    };
+
+    // PDF download handler
     const handleDownloadPDF = useCallback(async () => {
         setError(null);
         setIsGeneratingPdf(true);
@@ -45,12 +104,10 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     }, [editorMarkdown]);
 
     const handleUploadClick = () => {
-        // Auth gate: redirect to login if not authenticated
         if (!user) {
             onLoginRequest();
             return;
         }
-        // Trigger file input
         fileInputRef.current?.click();
     };
 
@@ -58,14 +115,12 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
 
-        // Validate file type
         const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (!validTypes.includes(file.type)) {
             setError('Please upload a valid image (JPEG, PNG, WebP, or GIF)');
             return;
         }
 
-        // Validate file size (max 10MB)
         const maxSize = 10 * 1024 * 1024;
         if (file.size > maxSize) {
             setError('Image must be smaller than 10MB');
@@ -76,12 +131,10 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         setIsUploading(true);
 
         try {
-            // 1. Upload to Firebase Storage
             const storageRef = ref(storage, `scans/${user.uid}/${Date.now()}_${file.name}`);
             const snapshot = await uploadBytes(storageRef, file);
             const imageUrl = await getDownloadURL(snapshot.ref);
 
-            // 2. Send to backend for Gemini processing
             const token = await user.getIdToken();
             const response = await fetch('http://localhost:6300/api/users/scan', {
                 method: 'POST',
@@ -102,9 +155,9 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
 
             const document = await response.json();
 
-            // 3. Load markdown into editor
             if (document.markdownContent) {
                 setExtractedMarkdown(document.markdownContent);
+                setSelectedNoteId(null);
             } else {
                 setError('No text could be extracted from the image');
             }
@@ -113,7 +166,6 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
             setError(err instanceof Error ? err.message : 'Failed to process image');
         } finally {
             setIsUploading(false);
-            // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -121,11 +173,33 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     };
 
     return (
-        <div className="bg-black w-screen min-h-screen flex flex-col text-white">
+        <div className="bg-black w-screen min-h-screen flex flex-col text-white relative">
+            {/* Sidebar */}
+            <NotesSidebar
+                open={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                notes={notes}
+                selectedNoteId={selectedNoteId}
+                onSelect={handleSelectNote}
+                onNewNote={handleNewNote}
+            />
+
             {/* Navbar */}
-            <div className="bg-gray-900/80 backdrop-blur w-full h-20 border-b border-gray-700">
+            <div className="bg-gray-900/80 backdrop-blur w-full h-20 border-b border-gray-700 sticky top-0 z-50">
                 <div className="flex flex-row gap-3 items-center justify-between px-4 h-full max-w-6xl mx-auto">
                     <div className="flex flex-row gap-3 items-center">
+                        {/* Hamburger menu */}
+                        <button
+                            onClick={() => setSidebarOpen((s) => !s)}
+                            className="mr-2 h-10 w-10 rounded-xl border border-gray-700 bg-gray-900
+                                flex items-center justify-center hover:bg-gray-800 active:scale-95 transition
+                                focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-black"
+                            aria-label="Open notes sidebar"
+                            title="Notes"
+                        >
+                            <span className="text-xl leading-none">☰</span>
+                        </button>
+
                         <img
                             src="src/assets/logo.png"
                             alt="VibeScribe Logo"
@@ -134,7 +208,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                         <p className="font-bold text-2xl tracking-wide">VibeScribe</p>
                     </div>
 
-                    {/* Login/Logout Button */}
+                    {/* Login/Logout */}
                     {user ? (
                         <div className="flex items-center gap-4">
                             <img
@@ -177,7 +251,6 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                         <p className="font-extrabold text-4xl sm:text-6xl leading-tight">
                             Study Smarter, Not Harder
                         </p>
-
                         <p className="text-white/80 font-medium text-base sm:text-xl max-w-3xl leading-relaxed">
                             Upload images of your notes, convert them into editable Markdown,
                             summarize key points, and export your notes in seconds.
@@ -210,14 +283,11 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                             font-semibold text-emerald-300
                             shadow-md shadow-emerald-900/20
                             transition-all duration-200
-
                             hover:bg-gray-800
                             hover:border-emerald-500
                             hover:text-emerald-200
                             active:scale-95
-
                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-black
-                            
                             disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
                         `}
                     >
@@ -240,6 +310,30 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                     </button>
                 </div>
 
+                {/* Save/New Note Buttons */}
+                <div className="w-full max-w-5xl mx-auto">
+                    <div className="flex justify-end gap-3 mb-3">
+                        <button
+                            onClick={handleNewNote}
+                            className="rounded-2xl px-4 py-3 font-semibold
+                                border border-gray-700 bg-gray-900 text-white/90
+                                hover:bg-gray-800 active:scale-95 transition"
+                        >
+                            + New Note
+                        </button>
+
+                        <button
+                            onClick={handleSave}
+                            className="rounded-2xl px-5 py-3 font-semibold
+                                bg-emerald-400 text-black
+                                hover:brightness-110 active:scale-95 transition
+                                focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-black"
+                        >
+                            {selectedNoteId ? "Save Changes" : "Save Note"}
+                        </button>
+                    </div>
+                </div>
+
                 {/* Milkdown Editor */}
                 <div className="flex flex-col items-center gap-2">
                     <div className="w-full max-w-5xl">
@@ -253,7 +347,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                     </div>
                 </div>
 
-                {/* Download Button */}
+                {/* Download PDF Button */}
                 <div className="flex justify-center pb-8">
                     <button
                         onClick={handleDownloadPDF}
@@ -266,14 +360,11 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                             font-semibold text-emerald-300
                             shadow-md shadow-emerald-900/20
                             transition-all duration-200
-
                             hover:bg-gray-800
                             hover:border-emerald-500
                             hover:text-emerald-200
                             active:scale-95
-
                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-black
-                            
                             disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
                         `}
                     >
