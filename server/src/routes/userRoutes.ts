@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import {gemini, onboard, test} from '../controllers/UserController';
-import {processScan} from "../controllers/FileController.ts";
+import { gemini, onboard } from '../controllers/UserController';
+import { processScan } from "../controllers/FileController.ts";
 import { verifyToken } from '../middleware/authMiddleware';
 
 const router = Router();

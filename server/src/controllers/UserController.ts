@@ -91,11 +91,79 @@ export const getDocuments = async (req: AuthRequest, res: Response) => {
         })
 
         return res.status(200).json(documents);
-    }catch (e) {
-        return res.status(500).json({e})
+    } catch (e) {
+        return res.status(500).json({ e })
     }
 }
 
-export const test = async (req: AuthRequest, res: Response) => {
-    console.log("TESTING ROUTE HIT");
+export const createDocument = async (req: AuthRequest, res: Response) => {
+    const { uid } = req.user!;
+    const { markdownContent, imageUrl } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { firebaseId: uid } });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const doc = await prisma.document.create({
+            data: {
+                userId: user.id,
+                markdownContent: markdownContent || "",
+                imageUrl: imageUrl || "",
+            }
+        });
+        return res.status(201).json(doc);
+    } catch (e) {
+        console.error("Create error:", e);
+        return res.status(500).json({ error: "Failed to create document" });
+    }
+}
+
+export const updateDocument = async (req: AuthRequest, res: Response) => {
+    const { uid } = req.user!;
+    const { id } = req.params;
+    const { markdownContent } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { firebaseId: uid } });
+        if (!user) return res.status(403).json({ error: "User not found" });
+
+        const doc = await prisma.document.findUnique({ where: { id } });
+        if (!doc) return res.status(404).json({ error: "Document not found" });
+
+        if (doc.userId !== user.id) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const updated = await prisma.document.update({
+            where: { id },
+            data: { markdownContent }
+        });
+        return res.json(updated);
+    } catch (e) {
+        console.error("Update error:", e);
+        return res.status(500).json({ error: "Failed to update document" });
+    }
+}
+
+export const deleteDocument = async (req: AuthRequest, res: Response) => {
+    const { uid } = req.user!;
+    const { id } = req.params;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { firebaseId: uid } });
+        if (!user) return res.status(403).json({ error: "User not found" });
+
+        const doc = await prisma.document.findUnique({ where: { id } });
+        if (!doc) return res.status(404).json({ error: "Document not found" });
+
+        if (doc.userId !== user.id) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        await prisma.document.delete({ where: { id } });
+        return res.json({ message: "Document deleted" });
+    } catch (e) {
+        console.error("Delete error:", e);
+        return res.status(500).json({ error: "Failed to delete document" });
+    }
 }
