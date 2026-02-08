@@ -1,3 +1,5 @@
+import { MilkdownEditor } from '../../MilkdownEditor';
+
 const MainPage = () => {
     return (
         <div className="bg-black w-screen min-h-screen flex flex-col text-white">
@@ -26,21 +28,6 @@ const MainPage = () => {
                             Upload images of your notes, convert them into editable Markdown,
                             summarize key points, and export your notes in seconds.
                         </p>
-
-                        <div className="mt-2 flex justify-center">
-                            <button
-                                className="
-                  rounded-2xl px-6 py-3 font-semibold
-                  bg-yellow-400 text-black
-                  transition-all duration-200
-                  hover:brightness-110
-                  active:scale-95
-                  focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:ring-offset-2 focus:ring-offset-black
-                "
-                            >
-                                Get Started
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -66,38 +53,17 @@ const MainPage = () => {
                     >
                         Click Here to Upload a Photo
                         <span className="text-2xl font-bold leading-none transition-transform duration-200 group-hover:rotate-90">
-              +
-            </span>
+                            +
+                        </span>
                     </button>
                 </div>
 
-                {/* Editor */}
+                {/* Milkdown Editor - Replaced textarea */}
                 <div className="flex flex-col items-center gap-2">
                     <div className="w-full max-w-5xl">
-            <textarea
-                placeholder="Your converted notes will appear here..."
-                className="
-                w-full min-h-[280px]
-                rounded-2xl
-                border border-gray-700
-                bg-gray-900/80
-                p-5
-
-                text-white/90
-                placeholder:text-gray-400
-
-                shadow-lg shadow-black/40
-                resize-none
-
-                focus:outline-none
-                focus:ring-2 focus:ring-emerald-500
-                focus:border-emerald-500
-
-                transition-all duration-200
-              "
-            />
-                        <p className="mt-2 text-sm text-white/60 italic">
-                            Click anywhere to edit
+                        <MilkdownEditor />
+                        <p className="mt-2 text-sm text-white/60 italic text-center">
+                            Click anywhere to edit • Use the button above to view raw Markdown
                         </p>
                     </div>
                 </div>
@@ -132,3 +98,4 @@ const MainPage = () => {
 };
 
 export default MainPage;
+
