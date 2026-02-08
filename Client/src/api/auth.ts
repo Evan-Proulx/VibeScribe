@@ -16,9 +16,9 @@ export const authenticateGoogle = () => {
     }
 }
 
-export const fileUpload = (imgUrl: string) => {
+export const fileUpload = (imgUrl: string, token: string) => {
     try{
-        const response = api.post('/users/scan');
+        const response = api.post('/users/scan', {imageUrl: imgUrl}, {headers: {Authorization: `Bearer ${token}`}})
         console.log(response);
         return response as DocumentResponse | any;
     }catch(err) {
