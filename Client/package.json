@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@google/genai": "^1.40.0",
+    "@milkdown/crepe": "^7.18.0",
+    "@milkdown/utils": "^7.18.0",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.4",
     "class-variance-authority": "^0.7.1",
