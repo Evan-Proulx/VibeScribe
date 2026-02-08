@@ -1,5 +1,5 @@
-import type {Response} from 'express';
-import type {AuthRequest} from '../middleware/authMiddleware';
+import type { Response } from 'express';
+import type { AuthRequest } from '../middleware/authMiddleware';
 import prisma from "../config/prismaClient";
 import { GoogleGenAI } from "@google/genai";
 
@@ -39,8 +39,44 @@ export const processScan = async (req: AuthRequest, res: Response) => {
                     },
                 },
                 {
-                    text: "Perform high-accuracy OCR. Correct any spelling or grammar mistakes from the handwriting. Format the output as clean Markdown with headers and bullet points where appropriate."
+                    text: `You will receive the contents of an uploaded image (notes, documents, screenshots, or handwriting). Your job is to convert what you see into a faithful, polished, well-structured Markdown document.
+
+CRITICAL REQUIREMENTS
+- Preserve meaning exactly. Do not invent, infer, or add information that is not clearly present.
+- If any text/symbol is unclear, mark it as: [unclear] and keep surrounding context.
+- Correct obvious spelling, punctuation, and grammar mistakes, but do NOT change technical meaning, names, numbers, units, formulas, or code.
+- Keep the original language of the content. Do not translate unless the content itself is mixed-language.
+
+MARKDOWN OUTPUT RULES
+- Output Markdown only. No preamble, no explanations, no code fences around the entire output.
+- Use clear headings (#, ##, ###) that match the document’s structure (or create a sensible structure if none is explicit).
+- Use bullet points and numbered lists where appropriate.
+- Use tables only when the source is clearly tabular.
+- Preserve line breaks when they convey structure (addresses, poems, step-by-step work).
+
+MATH & SCIENCE FORMATTING
+- Convert math into LaTeX:
+  - Inline math: $...$
+  - Display math (standalone equations): $$...$$
+- Keep standard notation, subscripts, superscripts, fractions, roots, integrals, summations, limits, vectors, matrices, and Greek letters correct.
+- If the image shows multi-step derivations, preserve the steps in order. Prefer aligned display math where helpful:
+  $$\\begin{aligned}
+  ... \\\\
+  ...
+  \\end{aligned}$$
+- Preserve units and scientific formatting (e.g., m/s, N·m, kΩ).
+
+CODE (IF PRESENT)
+- If the image contains code, keep it verbatim except for fixing clearly accidental typos that do not change behavior (when uncertain, do not change it).
+- Put code in fenced blocks with the correct language tag if obvious (e.g., \`\`\`js, \`\`\`ts, \`\`\`python). Otherwise use \`\`\`text.
+
+QUALITY BAR
+- Aim for a clean, publication-ready result: consistent capitalization, spacing, punctuation, and list formatting.
+- Maintain the author’s intent and hierarchy. Do not over-summarize.
+
+Return the final Markdown document.`
                 }
+
             ],
         });
 

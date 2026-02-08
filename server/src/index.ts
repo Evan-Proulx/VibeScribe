@@ -5,6 +5,12 @@ import userRoutes from './routes/userRoutes';
 
 dotenv.config();
 
+// Validate required environment variables
+if (!process.env.GEMINI_API_KEY) {
+    console.error('FATAL: GEMINI_API_KEY is not set in environment variables');
+    process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 6300;
 
