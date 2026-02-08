@@ -1,10 +1,11 @@
-import { useRef, useState, useCallback, type ChangeEvent } from 'react';
+import { useRef, useState, useCallback, useEffect, type ChangeEvent } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { MilkdownEditor } from '../../MilkdownEditor';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../firebase';
 import { downloadMarkdownAsPdf, EmptyMarkdownError } from '../../utils/pdf';
 import NotesSidebar, { type Note } from './NotesSidebar.tsx';
+import { getDocuments, fileUpload, createDocument, updateDocument, deleteDocument } from '../../api/auth';
 
 interface MainPageProps {
     onLoginRequest: () => void;
@@ -38,6 +39,33 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         });
     }
 
+    // Load documents from backend
+    useEffect(() => {
+        const fetchDocs = async () => {
+            if (user) {
+                try {
+                    const token = await user.getIdToken();
+                    const response = await getDocuments(token);
+                    if (response && response.data) {
+                        const backendNotes: Note[] = response.data.map((doc: any) => ({
+                            id: doc.id,
+                            content: doc.markdownContent,
+                            updatedAt: new Date(doc.createdAt).toLocaleDateString("en-CA", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric"
+                            })
+                        }));
+                        setNotes(backendNotes);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch documents:", err);
+                }
+            }
+        };
+        fetchDocs();
+    }, [user]);
+
     // Callback to receive markdown updates from editor
     const handleMarkdownChange = useCallback((markdown: string) => {
         setEditorMarkdown(markdown);
@@ -62,40 +90,70 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     };
 
     // Save current editor content as note
-    const handleSave = () => {
+    const handleSave = async () => {
         const trimmed = editorMarkdown.trim();
         if (!trimmed) return;
 
-        if (!selectedNoteId) {
-            const newNote: Note = {
-                id: crypto.randomUUID(),
-                content: editorMarkdown,
-                updatedAt: nowLabel(),
-            };
-            setNotes((prev) => [newNote, ...prev]);
-            setSelectedNoteId(newNote.id);
+        if (!user) {
+            onLoginRequest();
             return;
         }
 
-        setNotes((prev) => {
-            const updated = prev.map((n) =>
-                n.id === selectedNoteId
-                    ? { ...n, content: editorMarkdown, updatedAt: nowLabel() }
-                    : n
-            );
-            const updatedNote = updated.find((n) => n.id === selectedNoteId);
-            const rest = updated.filter((n) => n.id !== selectedNoteId);
-            return updatedNote ? [updatedNote, ...rest] : updated;
-        });
+        try {
+            const token = await user.getIdToken();
+
+            if (!selectedNoteId) {
+                // Create new
+                const response = await createDocument(editorMarkdown, token);
+                if (response && response.data) {
+                    const newNote: Note = {
+                        id: response.data.id,
+                        content: response.data.markdownContent,
+                        updatedAt: nowLabel(),
+                    };
+                    setNotes((prev) => [newNote, ...prev]);
+                    setSelectedNoteId(newNote.id);
+                }
+            } else {
+                // Update existing
+                await updateDocument(selectedNoteId, editorMarkdown, token);
+                setNotes((prev) => {
+                    const updated = prev.map((n) =>
+                        n.id === selectedNoteId
+                            ? { ...n, content: editorMarkdown, updatedAt: nowLabel() }
+                            : n
+                    );
+                    const updatedNote = updated.find((n) => n.id === selectedNoteId);
+                    const rest = updated.filter((n) => n.id !== selectedNoteId);
+                    return updatedNote ? [updatedNote, ...rest] : updated;
+                });
+            }
+        } catch (e) {
+            console.error("Failed to save:", e);
+            setError("Failed to save note");
+        }
     };
 
     // Delete note handler
-    const handleDeleteNote = (noteId: string) => {
-        if (window.confirm("Are you sure you want to delete this note?")) {
+    const handleDeleteNote = async (noteId: string) => {
+        if (!window.confirm("Are you sure you want to delete this note?")) return;
+
+        if (!user) {
+            onLoginRequest();
+            return;
+        }
+
+        try {
+            const token = await user.getIdToken();
+            await deleteDocument(noteId, token);
+
             setNotes((prev) => prev.filter((n) => n.id !== noteId));
             if (selectedNoteId === noteId) {
                 handleNewNote(); // Clear editor if deleted note was selected
             }
+        } catch (e) {
+            console.error("Failed to delete:", e);
+            setError("Failed to delete note");
         }
     };
 
@@ -149,30 +207,22 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
             const storageRef = ref(storage, `scans/${user.uid}/${Date.now()}_${file.name}`);
             const snapshot = await uploadBytes(storageRef, file);
             const imageUrl = await getDownloadURL(snapshot.ref);
-
             const token = await user.getIdToken();
-            const response = await fetch('http://localhost:6300/api/users/scan', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ imageUrl })
-            });
+            const document = await fileUpload(imageUrl, token);
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    onLoginRequest();
-                    return;
-                }
-                throw new Error(`Server error: ${response.status}`);
-            }
-
-            const document = await response.json();
-
-            if (document.markdownContent) {
-                setExtractedMarkdown(document.markdownContent);
-                setSelectedNoteId(null);
+            if (document && document.data && document.data.markdownContent) {
+                const newNote: Note = {
+                    id: document.data.id || crypto.randomUUID(),
+                    content: document.data.markdownContent,
+                    updatedAt: nowLabel(),
+                };
+                setNotes(prev => [newNote, ...prev]);
+                setExtractedMarkdown(document.data.markdownContent);
+                setSelectedNoteId(null); // Show new note logic if needed, or select it
+                // Actually, let's select the new note
+                setSelectedNoteId(newNote.id);
+                setEditorMarkdown(newNote.content);
+                setEditorKey(prev => prev + 1);
             } else {
                 setError('No text could be extracted from the image');
             }
