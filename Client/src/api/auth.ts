@@ -9,3 +9,13 @@ export const authenticateGoogle = () => {
         console.log(err);
     }
 }
+
+export const getGeminiResponse = () => {
+    try {
+        const response = api.post('/users/gemini')
+        console.log(response);
+        return response;
+    }catch(err) {
+        console.log(err);
+    }
+}
