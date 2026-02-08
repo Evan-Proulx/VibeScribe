@@ -1,9 +1,9 @@
 import { useRef, useState, useCallback, type ChangeEvent } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { jsPDF } from 'jspdf';
 import { MilkdownEditor } from '../../MilkdownEditor';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../firebase';
+import { downloadMarkdownAsPdf, EmptyMarkdownError } from '../../utils/pdf';
 
 interface MainPageProps {
     onLoginRequest: () => void;
@@ -18,131 +18,30 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
     const [error, setError] = useState<string | null>(null);
     const [extractedMarkdown, setExtractedMarkdown] = useState<string | null>(null);
     const [editorMarkdown, setEditorMarkdown] = useState<string>('');
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     // Callback to receive markdown updates from editor
     const handleMarkdownChange = useCallback((markdown: string) => {
         setEditorMarkdown(markdown);
     }, []);
 
-    // PDF download handler - generates PDF from markdown content
-    const handleDownloadPDF = useCallback(() => {
-        if (!editorMarkdown.trim()) {
-            setError('No content to download. Add some notes first!');
-            return;
-        }
+    // PDF download handler - uses remark pipeline for proper markdown rendering
+    const handleDownloadPDF = useCallback(async () => {
+        setError(null);
+        setIsGeneratingPdf(true);
 
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 20;
-        const maxWidth = pageWidth - margin * 2;
-        const lineHeight = 7;
-        let y = margin;
-
-        // Split markdown into lines and process
-        const lines = editorMarkdown.split('\n');
-
-        for (const line of lines) {
-            // Handle headers
-            if (line.startsWith('# ')) {
-                doc.setFontSize(18);
-                doc.setFont('helvetica', 'bold');
-                const text = line.replace(/^# /, '');
-                const splitLines = doc.splitTextToSize(text, maxWidth);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin, y);
-                    y += lineHeight + 2;
-                }
-                y += 3;
-            } else if (line.startsWith('## ')) {
-                doc.setFontSize(14);
-                doc.setFont('helvetica', 'bold');
-                const text = line.replace(/^## /, '');
-                const splitLines = doc.splitTextToSize(text, maxWidth);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin, y);
-                    y += lineHeight + 1;
-                }
-                y += 2;
-            } else if (line.startsWith('### ')) {
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                const text = line.replace(/^### /, '');
-                const splitLines = doc.splitTextToSize(text, maxWidth);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin, y);
-                    y += lineHeight;
-                }
-                y += 1;
-            } else if (line.startsWith('- ') || line.startsWith('* ')) {
-                // Bullet points
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'normal');
-                const text = '• ' + line.replace(/^[-*] /, '');
-                const splitLines = doc.splitTextToSize(text, maxWidth - 10);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin + 5, y);
-                    y += lineHeight;
-                }
-            } else if (line.match(/^\d+\. /)) {
-                // Numbered lists
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'normal');
-                const splitLines = doc.splitTextToSize(line, maxWidth - 10);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin + 5, y);
-                    y += lineHeight;
-                }
-            } else if (line.trim() === '') {
-                // Empty line
-                y += lineHeight / 2;
+        try {
+            await downloadMarkdownAsPdf(editorMarkdown, 'vibescribe-notes');
+        } catch (err) {
+            if (err instanceof EmptyMarkdownError) {
+                setError(err.message);
             } else {
-                // Regular paragraph - clean markdown formatting
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'normal');
-                const cleanText = line
-                    .replace(/\*\*(.+?)\*\*/g, '$1')   // Bold
-                    .replace(/\*(.+?)\*/g, '$1')       // Italic
-                    .replace(/_(.+?)_/g, '$1')         // Italic alt
-                    .replace(/`(.+?)`/g, '$1')         // Inline code
-                    .replace(/\$\$(.+?)\$\$/g, '$1')   // Display LaTeX
-                    .replace(/\$(.+?)\$/g, '$1')       // Inline LaTeX
-                    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Links
-                const splitLines = doc.splitTextToSize(cleanText, maxWidth);
-                for (const splitLine of splitLines) {
-                    if (y > pageHeight - margin) {
-                        doc.addPage();
-                        y = margin;
-                    }
-                    doc.text(splitLine, margin, y);
-                    y += lineHeight;
-                }
+                console.error('PDF generation failed:', err);
+                setError('Failed to generate PDF. Please try again.');
             }
+        } finally {
+            setIsGeneratingPdf(false);
         }
-
-        // Generate filename with timestamp
-        const timestamp = new Date().toISOString().slice(0, 10);
-        doc.save(`vibescribe-notes-${timestamp}.pdf`);
     }, [editorMarkdown]);
 
     const handleUploadClick = () => {
@@ -358,7 +257,8 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                 <div className="flex justify-center pb-8">
                     <button
                         onClick={handleDownloadPDF}
-                        className="
+                        disabled={isGeneratingPdf}
+                        className={`
                             flex items-center gap-3
                             bg-gray-900 rounded-2xl
                             border border-emerald-700
@@ -373,10 +273,24 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                             active:scale-95
 
                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-black
-                        "
+                            
+                            disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100
+                        `}
                     >
-                        Download Your Notes (PDF)
-                        <span className="text-xl leading-none">⤓</span>
+                        {isGeneratingPdf ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Generating PDF...
+                            </>
+                        ) : (
+                            <>
+                                Download Your Notes (PDF)
+                                <span className="text-xl leading-none">⤓</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
