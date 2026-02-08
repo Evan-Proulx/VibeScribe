@@ -1,4 +1,4 @@
-import {authenticateGoogle, fileUpload} from "./api/auth.ts";
+import {authenticateGoogle, fileUpload, getDocuments} from "./api/auth.ts";
 import {type ChangeEvent, useEffect, useRef, useState} from "react";
 import { signInWithPopup, onAuthStateChanged, type User, signOut } from "firebase/auth";
 import {auth, googleProvider, storage} from "./firebase";
@@ -7,11 +7,18 @@ import { Button } from "./components/ui/button.tsx";
 import Aitest from "./aitest.tsx";
 import {ref, uploadBytes, getDownloadURL} from "firebase/storage";
 
+interface Document {
+    imageUrl: string;
+    markdownContent: string;
+    userId: string;
+    createdAt: string;
+}
 
 function App() {
     const [user, setUser] = useState<User | null>(null)
     const [markdownText, setMarkdownText] = useState("")
     const [imageUrl, sestImageUrl ] = useState<string | null>(null);
+    const [documents, setDocuments] = useState<Document[] | null>(null);
 
     const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -46,6 +53,7 @@ function App() {
         const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
             if (fbUser) {
                 const token = await fbUser.getIdToken();
+                localStorage.setItem("token", token)
                 // Sync with backend
                 await fetch('http://localhost:6300/api/users/onboard', {
                     method: 'POST',
@@ -61,6 +69,18 @@ function App() {
         });
         return () => unsubscribe();
     }, []);
+
+
+    const handleGetDocs = async () => {
+        try{
+            const token = localStorage.getItem("token");
+            const response = await getDocuments(token)
+            setDocuments(response.data)
+            console.log(documents)
+        }catch (e) {
+            console.error(e)
+        }
+    }
 
 
     useEffect(() => {
@@ -106,6 +126,7 @@ function App() {
                     {/*<Aitest/>*/}
 
                     <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg" onChange={handleFileUpload} />
+                    <Button onClick={handleGetDocs}>GET DOCS</Button>
                 </div>
 
                 {user ? (<h2>USER EXISTS</h2>) : (<h2>USER DOES NOT EXIST</h2>)}
