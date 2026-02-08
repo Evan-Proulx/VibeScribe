@@ -23,7 +23,7 @@ export const processScan = async (req: AuthRequest, res: Response) => {
         });
 
         // 2. Fetch image for Gemini
-        const ai = new GoogleGenAI({ apiKey: "IzaSyCCxA-P0njcm4CQUs321oOffaKCz_nxh_U" });
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
         const imgResponse = await fetch(imageUrl);
         const imageArrayBuffer = await imgResponse.arrayBuffer();
         const base64ImageData = Buffer.from(imageArrayBuffer).toString('base64');
