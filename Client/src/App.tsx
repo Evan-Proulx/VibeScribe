@@ -4,25 +4,26 @@ import { signInWithPopup, onAuthStateChanged, type User, signOut } from "firebas
 import { auth, googleProvider } from "./firebase";
 import { LoginForm } from "./components/login-form.tsx";
 import { Button } from "./components/ui/button.tsx";
+import Aitest from "./aitest.tsx";
 
 function App() {
     const [user, setUser] = useState<User | null>(null)
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (fbuser) => {
-            if (fbuser) {
-                const token = await fbuser.getIdToken()
-                localStorage.setItem("accessToken", token)
-                await authenticateGoogle()
-                setUser(fbuser)
-            } else {
-                setUser(null)
-                localStorage.removeItem("accessToken")
-            }
-        })
-
-        return () => unsubscribe()
-    }, []);
+    // useEffect(() => {
+    //     const unsubscribe = onAuthStateChanged(auth, async (fbuser) => {
+    //         if (fbuser) {
+    //             const token = await fbuser.getIdToken()
+    //             localStorage.setItem("accessToken", token)
+    //             await authenticateGoogle()
+    //             setUser(fbuser)
+    //         } else {
+    //             setUser(null)
+    //             localStorage.removeItem("accessToken")
+    //         }
+    //     })
+    //
+    //     return () => unsubscribe()
+    // }, []);
 
     // Show dashboard when logged in
     if (user) {
@@ -58,6 +59,8 @@ function App() {
                     <Button onClick={() => signInWithPopup(auth, googleProvider)}>
                         Continue with Google
                     </Button>
+
+                    <Aitest/>
                 </div>
             </div>
         </div>

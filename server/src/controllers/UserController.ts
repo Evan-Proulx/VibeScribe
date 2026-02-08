@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import type { AuthRequest } from '../middleware/authMiddleware';
 import prisma from "../config/prismaClient";
+import {GoogleGenAI} from "@google/genai";
 
 export const onboard = async (req: AuthRequest, res: Response) => {
     console.log('Onboard endpoint hit');
@@ -33,3 +34,28 @@ export const onboard = async (req: AuthRequest, res: Response) => {
         });
     }
 };
+
+export const gemini = async (req: AuthRequest, res: Response) => {
+    const ai = new GoogleGenAI({apiKey: "AIzaSyCCxA-P0njcm4CQUs321oOffaKCz_nxh_U"});
+    const image_path = "https://farm4.staticflickr.com/3789/10177514664_0ff9a53cf8_z.jpg"
+
+    const response = await fetch(image_path);
+    const imageArrayBuffer = await response.arrayBuffer();
+    const base64ImageData = Buffer.from(imageArrayBuffer).toString('base64');
+
+    const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+            {
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: base64ImageData,
+                },
+            },
+            { text: "Extract the text from this image" }
+        ],
+    });
+    console.log(result.text);
+
+    return res.status(200).json(result);
+}
