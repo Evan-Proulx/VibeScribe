@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, useCallback } from 'react';
+import { useRef, useState, useCallback, type ChangeEvent } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import { MilkdownEditor } from '../../MilkdownEditor';
@@ -24,7 +24,7 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
         setEditorMarkdown(markdown);
     }, []);
 
-    // PDF download handler
+    // PDF download handler - generates PDF from markdown content
     const handleDownloadPDF = useCallback(() => {
         if (!editorMarkdown.trim()) {
             setError('No content to download. Add some notes first!');
@@ -100,19 +100,34 @@ const MainPage = ({ onLoginRequest }: MainPageProps) => {
                     doc.text(splitLine, margin + 5, y);
                     y += lineHeight;
                 }
+            } else if (line.match(/^\d+\. /)) {
+                // Numbered lists
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'normal');
+                const splitLines = doc.splitTextToSize(line, maxWidth - 10);
+                for (const splitLine of splitLines) {
+                    if (y > pageHeight - margin) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                    doc.text(splitLine, margin + 5, y);
+                    y += lineHeight;
+                }
             } else if (line.trim() === '') {
                 // Empty line
                 y += lineHeight / 2;
             } else {
-                // Regular paragraph
+                // Regular paragraph - clean markdown formatting
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'normal');
-                // Remove markdown formatting
                 const cleanText = line
-                    .replace(/\*\*(.+?)\*\*/g, '$1')  // Bold
-                    .replace(/\*(.+?)\*/g, '$1')      // Italic
-                    .replace(/`(.+?)`/g, '$1')        // Inline code
-                    .replace(/\$(.+?)\$/g, '$1');     // LaTeX (simplified)
+                    .replace(/\*\*(.+?)\*\*/g, '$1')   // Bold
+                    .replace(/\*(.+?)\*/g, '$1')       // Italic
+                    .replace(/_(.+?)_/g, '$1')         // Italic alt
+                    .replace(/`(.+?)`/g, '$1')         // Inline code
+                    .replace(/\$\$(.+?)\$\$/g, '$1')   // Display LaTeX
+                    .replace(/\$(.+?)\$/g, '$1')       // Inline LaTeX
+                    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Links
                 const splitLines = doc.splitTextToSize(cleanText, maxWidth);
                 for (const splitLine of splitLines) {
                     if (y > pageHeight - margin) {
