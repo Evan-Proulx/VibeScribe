@@ -59,3 +59,43 @@ export const gemini = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result);
 }
+
+export const getDocuments = async (req: AuthRequest, res: Response) => {
+    const { uid } = req.user!;
+
+    if (!uid) {
+        return res.status(403).json({
+            error: "No such uid",
+        })
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { firebaseId: uid },
+        });
+
+        if (!user) {
+            return res.status(403).json({
+                error: "No such user",
+            })
+        }
+
+        const documents = await prisma.document.findMany({
+            where: {
+                userId: user.id,
+
+            },
+            orderBy: {
+                createdAt: 'desc',
+            }
+        })
+
+        return res.status(200).json(documents);
+    }catch (e) {
+        return res.status(500).json({e})
+    }
+}
+
+export const test = async (req: AuthRequest, res: Response) => {
+    console.log("TESTING ROUTE HIT");
+}
