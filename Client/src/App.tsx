@@ -1,29 +1,50 @@
-import { authenticateGoogle } from "./api/auth.ts";
-import { useEffect, useState } from "react";
+import {authenticateGoogle, fileUpload} from "./api/auth.ts";
+import {type ChangeEvent, useEffect, useRef, useState} from "react";
 import { signInWithPopup, onAuthStateChanged, type User, signOut } from "firebase/auth";
-import { auth, googleProvider } from "./firebase";
+import {auth, googleProvider, storage} from "./firebase";
 import { LoginForm } from "./components/login-form.tsx";
 import { Button } from "./components/ui/button.tsx";
 import Aitest from "./aitest.tsx";
+import {ref, uploadBytes, getDownloadURL} from "firebase/storage";
+
 
 function App() {
     const [user, setUser] = useState<User | null>(null)
+    const [markdownText, setMarkdownText] = useState("")
+    const [imageUrl, sestImageUrl ] = useState<string | null>(null);
 
-    // useEffect(() => {
-    //     const unsubscribe = onAuthStateChanged(auth, async (fbuser) => {
-    //         if (fbuser) {
-    //             const token = await fbuser.getIdToken()
-    //             localStorage.setItem("accessToken", token)
-    //             await authenticateGoogle()
-    //             setUser(fbuser)
-    //         } else {
-    //             setUser(null)
-    //             localStorage.removeItem("accessToken")
-    //         }
-    //     })
-    //
-    //     return () => unsubscribe()
-    // }, []);
+    const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+
+        if(!file || !user){
+            console.log("No user or file")
+            return
+        }
+
+        try{
+            const storageRef = ref(storage, `scans/${user.uid}/${Date.now()}_${file.name}`)
+            const snapshot = await uploadBytes(storageRef, file)
+            const url = await getDownloadURL(snapshot.ref)
+            console.log(url)
+            const token = await user.getIdToken()
+            localStorage.setItem("token", token)
+            const response = await fileUpload(url);
+            console.log(response)
+
+            if (response.markdownContent.length > 0) {
+                setMarkdownText(response.markdownContent)
+            }else{
+                console.log("Could not extract text from image")
+            }
+        }catch(e){
+            console.error(e)
+        }
+    }
+
+    useEffect(() => {
+        console.log(user)
+    }, [user]);
+
 
     // Show dashboard when logged in
     if (user) {
@@ -61,6 +82,9 @@ function App() {
                     </Button>
 
                     <Aitest/>
+
+                    <input type="file" id="avatar" name="avatar" accept="image/png, image/jpeg" onChange={handleFileUpload} />
+
                 </div>
             </div>
         </div>
