@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import userRoutes from './routes/userRoutes';
+import userRoutes from './routes/userRoutes.ts';
+import docRoutes from './routes/documents.ts';
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/users', userRoutes);
+app.use('/api/documents', docRoutes);
 
 app.listen(PORT, () => {
     console.log(`VibeScribe Server running on http://localhost:${PORT}`);

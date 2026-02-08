@@ -35,3 +35,13 @@ export const getGeminiResponse = () => {
         console.log(err);
     }
 }
+
+export const getDocuments = async (token: string | null) => {
+    try{
+        const response = api.post('/documents', {}, {headers: {"Content-Type": "application/json", Authorization: `Bearer ${token}`}} );
+        console.log(response);
+        return response
+    }catch(err) {
+        console.log(err);
+    }
+}
